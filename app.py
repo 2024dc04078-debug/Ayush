@@ -1,87 +1,3 @@
-# ==========================================
-# ML Assignment 2 - Streamlit App
-# Global Ads Performance Classification
-# ==========================================
-
-import streamlit as st
-import pandas as pd
-import numpy as np
-import pickle
-import os
-import matplotlib.pyplot as plt
-
-from sklearn.metrics import (
-    accuracy_score, roc_auc_score, precision_score,
-    recall_score, f1_score, matthews_corrcoef,
-    confusion_matrix, classification_report
-)
-from sklearn.preprocessing import LabelEncoder
-
-
-# ==========================================
-# Page Configuration
-# ==========================================
-
-st.set_page_config(page_title="Global Ads Performance Classification App",
-                   layout="wide")
-
-st.title("📊 Global Ads Performance Classification App")
-st.write("Predict whether an advertising campaign has High ROAS (>1).")
-
-
-# ==========================================
-# Available Models (Saved in Root Folder)
-# ==========================================
-
-available_models = {
-    "Logistic Regression": "Logistic_Regression.pkl",
-    "Decision Tree": "Decision_Tree.pkl",
-    "KNN": "KNN.pkl",
-    "Naive Bayes": "Naive_Bayes.pkl",
-    "Random Forest": "Random_Forest.pkl",
-    "XGBoost": "XGBoost.pkl"
-}
-
-
-# ==========================================
-# Model Selection Dropdown
-# ==========================================
-
-selected_model_name = st.selectbox(
-    "Select Model",
-    list(available_models.keys())
-)
-
-model_filename = available_models[selected_model_name]
-
-# ==========================================
-# Load Selected Model
-# ==========================================
-
-if not os.path.exists(model_filename):
-    st.error("Model file not found. Please ensure .pkl files are uploaded to GitHub.")
-    st.stop()
-
-with open(model_filename, "rb") as f:
-    model = pickle.load(f)
-
-# Load scaler
-if os.path.exists("scaler.pkl"):
-    with open("scaler.pkl", "rb") as f:
-        scaler = pickle.load(f)
-else:
-    scaler = None
-
-
-# ==========================================
-# Upload Test Dataset
-# ==========================================
-
-uploaded_file = st.file_uploader(
-    "Upload Test CSV File",
-    type=["csv"]
-)
-
 if uploaded_file is not None:
 
     data = pd.read_csv(uploaded_file)
@@ -89,6 +5,75 @@ if uploaded_file is not None:
     st.subheader("📄 Uploaded Dataset Preview")
     st.dataframe(data.head())
 
-    # ==========================================
-    # Preprocessing (Same as Training)
-    # =======
+    # Create target
+    if "ROAS" in data.columns:
+        data["High_ROAS"] = (data["ROAS"] > 1).astype(int)
+    else:
+        st.error("ROAS column missing.")
+        st.stop()
+
+    # Drop unused columns EXACTLY like training
+    drop_cols = ["ROAS", "date"]
+    for col in drop_cols:
+        if col in data.columns:
+            data.drop(columns=[col], inplace=True)
+
+    # Encode categorical columns
+    for col in data.select_dtypes(include=["object"]).columns:
+        le = LabelEncoder()
+        data[col] = le.fit_transform(data[col])
+
+    # Separate features & target
+    X = data.drop(columns=["High_ROAS"])
+    y = data["High_ROAS"]
+
+    # IMPORTANT: Ensure column order consistency
+    if hasattr(model, "feature_names_in_"):
+        X = X[model.feature_names_in_]
+
+    # Apply scaling only if needed
+    if selected_model_name in ["Logistic Regression", "KNN"]:
+        X_processed = scaler.transform(X)
+    else:
+        X_processed = X
+
+    # Predictions
+    y_pred = model.predict(X_processed)
+
+    if hasattr(model, "predict_proba"):
+        y_prob = model.predict_proba(X_processed)[:, 1]
+        auc = roc_auc_score(y, y_prob)
+    else:
+        auc = None
+
+    # Metrics
+    accuracy = accuracy_score(y, y_pred)
+    precision = precision_score(y, y_pred)
+    recall = recall_score(y, y_pred)
+    f1 = f1_score(y, y_pred)
+    mcc = matthews_corrcoef(y, y_pred)
+
+    st.subheader("📈 Evaluation Metrics")
+
+    st.table(pd.DataFrame({
+        "Metric": ["Accuracy", "AUC Score", "Precision", "Recall", "F1 Score", "MCC"],
+        "Value": [accuracy, auc, precision, recall, f1, mcc]
+    }))
+
+    # Confusion Matrix
+    st.subheader("📌 Confusion Matrix")
+
+    cm = confusion_matrix(y, y_pred)
+    fig, ax = plt.subplots()
+    ax.matshow(cm)
+
+    for (i, j), val in np.ndenumerate(cm):
+        ax.text(j, i, val, ha='center', va='center')
+
+    plt.xlabel("Predicted")
+    plt.ylabel("Actual")
+    st.pyplot(fig)
+
+    # Classification Report
+    st.subheader("📄 Classification Report")
+    st.text(classification_report(y, y_pred))
