@@ -1,3 +1,67 @@
+import streamlit as st
+import pandas as pd
+import numpy as np
+import pickle
+import os
+import matplotlib.pyplot as plt
+
+from sklearn.metrics import (
+    accuracy_score, roc_auc_score, precision_score,
+    recall_score, f1_score, matthews_corrcoef,
+    confusion_matrix, classification_report
+)
+from sklearn.preprocessing import LabelEncoder
+
+# -------------------------------
+# Page Config
+# -------------------------------
+st.set_page_config(page_title="Global Ads Performance Classification App",
+                   layout="wide")
+
+st.title("📊 Global Ads Performance Classification App")
+st.write("Predict whether an advertising campaign has High ROAS (>1).")
+
+# -------------------------------
+# Model Selection
+# -------------------------------
+available_models = {
+    "Logistic Regression": "Logistic_Regression.pkl",
+    "Decision Tree": "Decision_Tree.pkl",
+    "KNN": "KNN.pkl",
+    "Naive Bayes": "Naive_Bayes.pkl",
+    "Random Forest": "Random_Forest.pkl",
+    "XGBoost": "XGBoost.pkl"
+}
+
+selected_model_name = st.selectbox(
+    "Select Model",
+    list(available_models.keys())
+)
+
+model_filename = available_models[selected_model_name]
+
+if not os.path.exists(model_filename):
+    st.error("Model file not found. Upload .pkl files to GitHub.")
+    st.stop()
+
+with open(model_filename, "rb") as f:
+    model = pickle.load(f)
+
+# Load scaler
+if os.path.exists("scaler.pkl"):
+    with open("scaler.pkl", "rb") as f:
+        scaler = pickle.load(f)
+else:
+    scaler = None
+
+# -------------------------------
+# File Upload
+# -------------------------------
+uploaded_file = st.file_uploader("Upload Test CSV File", type=["csv"])
+
+# -------------------------------
+# Main Logic
+# -------------------------------
 if uploaded_file is not None:
 
     data = pd.read_csv(uploaded_file)
@@ -5,34 +69,35 @@ if uploaded_file is not None:
     st.subheader("📄 Uploaded Dataset Preview")
     st.dataframe(data.head())
 
-    # Create target
-    if "ROAS" in data.columns:
-        data["High_ROAS"] = (data["ROAS"] > 1).astype(int)
-    else:
+    # Create Target
+    if "ROAS" not in data.columns:
         st.error("ROAS column missing.")
         st.stop()
 
-    # Drop unused columns EXACTLY like training
-    drop_cols = ["ROAS", "date"]
-    for col in drop_cols:
+    data["High_ROAS"] = (data["ROAS"] > 1).astype(int)
+
+    # Drop columns same as training
+    for col in ["ROAS", "date"]:
         if col in data.columns:
             data.drop(columns=[col], inplace=True)
 
-    # Encode categorical columns
+    # Encode categoricals
     for col in data.select_dtypes(include=["object"]).columns:
         le = LabelEncoder()
         data[col] = le.fit_transform(data[col])
 
-    # Separate features & target
     X = data.drop(columns=["High_ROAS"])
     y = data["High_ROAS"]
 
-    # IMPORTANT: Ensure column order consistency
+    # Ensure same column order
     if hasattr(model, "feature_names_in_"):
         X = X[model.feature_names_in_]
 
-    # Apply scaling only if needed
+    # Scaling if needed
     if selected_model_name in ["Logistic Regression", "KNN"]:
+        if scaler is None:
+            st.error("Scaler file missing.")
+            st.stop()
         X_processed = scaler.transform(X)
     else:
         X_processed = X
@@ -56,8 +121,10 @@ if uploaded_file is not None:
     st.subheader("📈 Evaluation Metrics")
 
     st.table(pd.DataFrame({
-        "Metric": ["Accuracy", "AUC Score", "Precision", "Recall", "F1 Score", "MCC"],
-        "Value": [accuracy, auc, precision, recall, f1, mcc]
+        "Metric": ["Accuracy", "AUC Score", "Precision",
+                   "Recall", "F1 Score", "MCC"],
+        "Value": [accuracy, auc, precision,
+                  recall, f1, mcc]
     }))
 
     # Confusion Matrix
@@ -77,3 +144,6 @@ if uploaded_file is not None:
     # Classification Report
     st.subheader("📄 Classification Report")
     st.text(classification_report(y, y_pred))
+
+else:
+    st.info("Please upload a CSV file to evaluate the selected model.")
