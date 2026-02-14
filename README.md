@@ -1,39 +1,48 @@
 a. Problem Statement
+
 The objective of this project is to predict whether a digital advertisement campaign achieves high Return on Ad Spend (ROAS) based on historical advertising performance data.
 This is formulated as a binary classification problem, where campaigns with ROAS greater than 1 are labeled as High ROAS (1) and others as Low ROAS (0).
 Accurate prediction of high-performing advertisements helps organizations optimize marketing budgets, improve campaign efficiency, and maximize overall revenue.
 ________________________________________
 
 b. Dataset Description
-The dataset used in this project is the Global Ads Performance Dataset, obtained from a public repository.
-Dataset Characteristics:
-•	Type: Binary Classification
-•	Target Variable: High_ROAS
-•	Number of instances: 1200
-•	Number of features:  14
-Key Preprocessing Steps:
-•	Created binary target variable High_ROAS from ROAS
-•	Removed irrelevant columns such as date
-•	Handled missing values by removing incomplete rows
-•	Encoded categorical variables using Label Encoding
-•	Applied feature scaling for Logistic Regression and KNN models
+
+The dataset used in this project is the **Global Ads Performance Dataset**, obtained from a public repository.
+
+**Dataset Characteristics:**
+- Type: Binary Classification
+- Target Variable: High_ROAS
+- Number of instances: 1200
+- Number of features: 14
+
+**Key Preprocessing Steps:**
+- Created binary target variable `High_ROAS` from `ROAS`
+- Removed irrelevant columns such as `date`
+- Handled missing values by removing incomplete rows
+- Encoded categorical variables using Label Encoding
+- Applied feature scaling for Logistic Regression and KNN models
+
 ________________________________________
 
 c. Models Used and Evaluation Metrics
+
 The following six machine learning classification models were implemented and evaluated on the same dataset:
-1.	Logistic Regression
-2.	Decision Tree Classifier
-3.	K-Nearest Neighbors (KNN)
-4.	Naive Bayes (Gaussian)
-5.	Random Forest (Ensemble Model)
-6.	XGBoost (Ensemble Model)
+
+1. Logistic Regression
+2. Decision Tree Classifier
+3. K-Nearest Neighbors (KNN)
+4. Naive Bayes (Gaussian)
+5. Random Forest (Ensemble Model)
+6. XGBoost (Ensemble Model)
+
 Each model was evaluated using the following metrics:
-•	Accuracy
-•	AUC Score
-•	Precision
-•	Recall
-•	F1 Score
-•	Matthews Correlation Coefficient (MCC)
+- Accuracy
+- AUC Score
+- Precision
+- Recall
+- F1 Score
+- Matthews Correlation Coefficient (MCC)
+
 ________________________________________
 
  Model Comparison Table
@@ -63,4 +72,5 @@ Conclusion
 
 Among all evaluated models, ensemble methods outperform individual classifiers due to their ability to model complex feature interactions and reduce overfitting.
 XGBoost demonstrates the most balanced and superior performance across all evaluation metrics, making it the most suitable model for predicting high ROAS advertisement campaigns.
+
 
